@@ -127,7 +127,7 @@ services:
       - /mnt/s3-media:/media
 
   readarr:
-    image: lscr.io/linuxserver/readarr:amd64-nightly
+    image:  linuxserver/readarr:0.4.19-nightly
     container_name: readarr
     restart: unless-stopped
     depends_on:
