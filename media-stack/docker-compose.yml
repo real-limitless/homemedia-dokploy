@@ -209,7 +209,7 @@ services:
       - ./tautulli/config:/config
 
   tdarr:
-    image: haveagitgad/tdarr:latest
+    image: ghcr.io/haveagitgad/tdarr:latest
     container_name: tdarr
     restart: unless-stopped
     depends_on:
