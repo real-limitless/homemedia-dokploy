@@ -1,0 +1,229 @@
+version: "3.9"
+
+services:
+  # ====================== RCLONE FUSE MOUNT (S3) ======================
+  rclone-media:
+    image: rclone/rclone:latest
+    container_name: rclone-media
+    restart: unless-stopped
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - ./rclone/config:/config
+      - ./rclone-cache:/cache
+      - /mnt/s3-media:/mnt/media:shared
+    command: >
+      mount ${RCLONE_REMOTE_NAME}: /mnt/media
+      --config /config/rclone.conf
+      --vfs-cache-mode full
+      --vfs-cache-max-size ${RCLONE_VFS_CACHE_MAX_SIZE}
+      --vfs-cache-max-age 336h
+      --vfs-read-ahead 512M
+      --dir-cache-time 9999h
+      --poll-interval 1m
+      --allow-other
+      --uid ${PUID}
+      --gid ${PGID}
+      --cache-dir /cache
+      --allow-non-empty
+    healthcheck:
+      test: ["CMD-SHELL", "mountpoint -q /mnt/media || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+
+  # ====================== VPN + TORRENT CLIENT ======================
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TZ=${TZ}
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      # ← add any extra gluetun env vars from your .env here
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:gluetun
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./qbittorrent/config:/config
+      - ./downloads:/downloads
+
+  # ====================== *ARR STACK ======================
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./prowlarr/config:/config
+      - /mnt/s3-media:/media
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./radarr/config:/config
+      - /mnt/s3-media:/media
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./sonarr/config:/config
+      - /mnt/s3-media:/media
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./lidarr/config:/config
+      - /mnt/s3-media:/media
+
+  readarr:
+    image: lscr.io/linuxserver/readarr:develop
+    container_name: readarr
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./readarr/config:/config
+      - /mnt/s3-media:/media
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./bazarr/config:/config
+      - /mnt/s3-media:/media
+
+  # ====================== MEDIA SERVERS ======================
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./plex/config:/config
+      - /mnt/s3-media:/media
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./jellyfin/config:/config
+      - /mnt/s3-media:/media
+
+  # ====================== SUPPORT SERVICES ======================
+  overseerr:
+    image: sctx/overseerr:latest
+    container_name: overseerr
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./overseerr/config:/app/config
+
+  tautulli:
+    image: lscr.io/linuxserver/tautulli:latest
+    container_name: tautulli
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./tautulli/config:/config
+
+  tdarr:
+    image: haveagitgad/tdarr:latest
+    container_name: tdarr
+    restart: unless-stopped
+    depends_on:
+      rclone-media:
+        condition: service_healthy
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./tdarr/config:/app/config
+      - /mnt/s3-media:/media
+
+  flaresolverr:
+    image: flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped

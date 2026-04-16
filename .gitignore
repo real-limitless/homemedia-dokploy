@@ -1,0 +1,27 @@
+# Environment and secrets
+.env
+*.env
+.rclone.conf
+rclone.conf
+
+# Media stack specifics
+media-stack/.env
+media-stack/rclone/config/rclone.conf
+media-stack/rclone-cache/*
+!media-stack/rclone-cache/.gitkeep
+
+# Logs and caches
+*.log
+cache/
+downloads/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+
+# Dokploy specific (if any)
+dokploy/
