@@ -16,20 +16,22 @@ services:
       - ./rclone/config:/config
       - ./rclone-cache:/cache
       - /mnt/s3-media:/mnt/media:shared
-    command: >
-      mount ${RCLONE_REMOTE_NAME}: /mnt/media
-      --config /config/rclone.conf
-      --vfs-cache-mode full
-      --vfs-cache-max-size ${RCLONE_VFS_CACHE_MAX_SIZE}
-      --vfs-cache-max-age 336h
-      --vfs-read-ahead 512M
-      --dir-cache-time 9999h
-      --poll-interval 1m
-      --allow-other
-      --uid ${PUID}
-      --gid ${PGID}
-      --cache-dir /cache
-      --allow-non-empty
+    command:
+      - mount
+      - "${RCLONE_REMOTE_NAME}:"
+      - /mnt/media
+      - --config=/config/rclone.conf
+      - --vfs-cache-mode=full
+      - --vfs-cache-max-size=${RCLONE_VFS_CACHE_MAX_SIZE:-80G}
+      - --vfs-cache-max-age=336h
+      - --vfs-read-ahead=512M
+      - --dir-cache-time=9999h
+      - --poll-interval=1m
+      - --allow-other
+      - "--uid=${PUID:-1000}"
+      - "--gid=${PGID:-1000}"
+      - --cache-dir=/cache
+      - --allow-non-empty
     healthcheck:
       test: ["CMD-SHELL", "mountpoint -q /mnt/media || exit 1"]
       interval: 15s
