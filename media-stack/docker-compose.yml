@@ -12,26 +12,44 @@ services:
       - /dev/fuse:/dev/fuse
     security_opt:
       - apparmor:unconfined
+    environment:
+      - RCLONE_REMOTE_NAME=${RCLONE_REMOTE_NAME:-private-s3}
+      - RCLONE_ACCESS_KEY=${RCLONE_ACCESS_KEY}
+      - RCLONE_SECRET_KEY=${RCLONE_SECRET_KEY}
+      - RCLONE_ENDPOINT=${RCLONE_ENDPOINT}
+      - RCLONE_BUCKET=${RCLONE_BUCKET}
+      - RCLONE_VFS_CACHE_MAX_SIZE=${RCLONE_VFS_CACHE_MAX_SIZE:-80G}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
     volumes:
-      - ./rclone/config:/config
       - ./rclone-cache:/cache
       - /mnt/s3-media:/mnt/media:shared
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - mount
-      - "${RCLONE_REMOTE_NAME}:"
-      - /mnt/media
-      - --config=/config/rclone.conf
-      - --vfs-cache-mode=full
-      - --vfs-cache-max-size=${RCLONE_VFS_CACHE_MAX_SIZE:-80G}
-      - --vfs-cache-max-age=336h
-      - --vfs-read-ahead=512M
-      - --dir-cache-time=9999h
-      - --poll-interval=1m
-      - --allow-other
-      - "--uid=${PUID:-1000}"
-      - "--gid=${PGID:-1000}"
-      - --cache-dir=/cache
-      - --allow-non-empty
+      - |
+        mkdir -p /config
+        cat > /config/rclone.conf <<EOF
+        [${RCLONE_REMOTE_NAME:-private-s3}]
+        type = s3
+        provider = Minio
+        access_key_id = ${RCLONE_ACCESS_KEY}
+        secret_access_key = ${RCLONE_SECRET_KEY}
+        endpoint = ${RCLONE_ENDPOINT}
+        bucket = ${RCLONE_BUCKET}
+        EOF
+        rclone mount ${RCLONE_REMOTE_NAME:-private-s3}: /mnt/media \
+          --config=/config/rclone.conf \
+          --vfs-cache-mode=full \
+          --vfs-cache-max-size=${RCLONE_VFS_CACHE_MAX_SIZE:-80G} \
+          --vfs-cache-max-age=336h \
+          --vfs-read-ahead=512M \
+          --dir-cache-time=9999h \
+          --poll-interval=1m \
+          --allow-other \
+          --uid=${PUID:-1000} \
+          --gid=${PGID:-1000} \
+          --cache-dir=/cache \
+          --allow-non-empty
     healthcheck:
       test: ["CMD-SHELL", "mountpoint -q /mnt/media || exit 1"]
       interval: 15s
