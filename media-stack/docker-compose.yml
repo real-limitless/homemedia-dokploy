@@ -42,6 +42,7 @@ services:
           --config=/config/rclone.conf \
           --vfs-cache-mode=full \
           --vfs-cache-max-size=${RCLONE_VFS_CACHE_MAX_SIZE:-80G} \
+          --s3-sign-accept-encoding=false \
           --vfs-cache-max-age=336h \
           --vfs-read-ahead=512M \
           --dir-cache-time=9999h \
