@@ -36,6 +36,7 @@ services:
         secret_access_key = ${RCLONE_SECRET_KEY}
         endpoint = ${RCLONE_ENDPOINT}
         bucket = ${RCLONE_BUCKET}
+        sign_accept_encoding = false
         EOF
         rclone mount ${RCLONE_REMOTE_NAME:-private-s3}: /mnt/media \
           --config=/config/rclone.conf \
