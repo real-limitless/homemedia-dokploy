@@ -28,10 +28,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        set -e
-        # Fix 1: Self-heal any stale FUSE mount on startup (prevents "Transport endpoint is not connected")
         fusermount -uz /mnt/media 2>/dev/null || umount -l /mnt/media 2>/dev/null || true
-
         mkdir -p /config
         cat > /config/rclone.conf <<EOF
         [${RCLONE_REMOTE_NAME:-private-s3}]
@@ -43,7 +40,7 @@ services:
         bucket = ${RCLONE_BUCKET}
         sign_accept_encoding = false
         EOF
-        exec rclone mount ${RCLONE_REMOTE_NAME:-private-s3}: /mnt/media \
+        rclone mount ${RCLONE_REMOTE_NAME:-private-s3}: /mnt/media \
           --config=/config/rclone.conf \
           --vfs-cache-mode=full \
           --vfs-cache-max-size=${RCLONE_VFS_CACHE_MAX_SIZE:-80G} \
@@ -88,7 +85,8 @@ services:
     container_name: qbittorrent
     network_mode: service:gluetun
     restart: unless-stopped
-    networks: []
+    ports: 
+      - 8080:8080 
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
