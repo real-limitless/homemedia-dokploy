@@ -94,6 +94,7 @@ services:
       - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
       - SERVER_REGIONS=${SERVER_REGIONS}
       - FIREWALL_INPUT_PORTS=${GLUETUN_FIREWALL_INPUT_PORTS:-8080}
+      - FIREWALL_VPN_INPUT_PORTS=${GLUETUN_FIREWALL_VPN_INPUT_PORTS:-6881}
       # ← add any extra gluetun env vars from your .env here
 
   qbittorrent:
@@ -111,6 +112,7 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
       - WEBUI_PORT=${QBITTORRENT_WEBUI_PORT:-8080}
+      - TORRENTING_PORT=${QBITTORRENT_TORRENTING_PORT:-6881}
     volumes:
       - ./qbittorrent/config:/config
       - ./downloads:/downloads
