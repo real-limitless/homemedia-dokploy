@@ -18,6 +18,7 @@ services:
       - RCLONE_SECRET_KEY=${RCLONE_SECRET_KEY}
       - RCLONE_ENDPOINT=${RCLONE_ENDPOINT}
       - RCLONE_BUCKET=${RCLONE_BUCKET}
+      - RCLONE_REGION=${RCLONE_REGION:-other-v2-signature}
       - RCLONE_VFS_CACHE_MAX_SIZE=${RCLONE_VFS_CACHE_MAX_SIZE:-80G}
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
@@ -43,6 +44,7 @@ services:
           --vfs-cache-mode=full \
           --vfs-cache-max-size=${RCLONE_VFS_CACHE_MAX_SIZE:-80G} \
           --s3-sign-accept-encoding=false \
+          --s3-region=${RCLONE_REGION:-other-v2-signature} \
           --vfs-cache-max-age=336h \
           --vfs-read-ahead=512M \
           --dir-cache-time=9999h \
