@@ -28,7 +28,6 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        fusermount -uz /mnt/media 2>/dev/null || umount -l /mnt/media 2>/dev/null || true
         mkdir -p /config
         cat > /config/rclone.conf <<EOF
         [${RCLONE_REMOTE_NAME:-private-s3}]
@@ -85,8 +84,6 @@ services:
     container_name: qbittorrent
     network_mode: service:gluetun
     restart: unless-stopped
-    ports: 
-      - 8080:8080 
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
