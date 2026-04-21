@@ -6,6 +6,10 @@ services:
     image: rclone/rclone:latest
     container_name: rclone-media
     restart: unless-stopped
+    # Give rclone time to flush VFS cache uploads and cleanly fusermount -u
+    # before Docker escalates to SIGKILL. Prevents stale host mounts.
+    stop_signal: SIGINT
+    stop_grace_period: 2m
     cap_add:
       - SYS_ADMIN
     devices:
@@ -28,7 +32,19 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        mkdir -p /config
+        set -e
+        mkdir -p /config /mnt/media
+
+        # --- Stale-mount self-heal ----------------------------------------
+        # If a previous container left a dangling FUSE mount on the host,
+        # the bind-mounted /mnt/media will still look "mounted" inside this
+        # fresh container. Lazy-unmount so rclone can remount cleanly
+        # without manual `fusermount -u /mnt/s3-media` on the host.
+        if mountpoint -q /mnt/media; then
+          echo "[rclone-media] Stale mount detected at /mnt/media, lazy-unmounting..."
+          fusermount -uz /mnt/media 2>/dev/null || umount -l /mnt/media 2>/dev/null || true
+        fi
+
         cat > /config/rclone.conf <<EOF
         [${RCLONE_REMOTE_NAME:-private-s3}]
         type = s3
@@ -39,7 +55,10 @@ services:
         bucket = ${RCLONE_BUCKET}
         sign_accept_encoding = false
         EOF
-        rclone mount ${RCLONE_REMOTE_NAME:-private-s3}: /mnt/media \
+
+        # exec so rclone becomes PID 1 and receives SIGINT directly,
+        # guaranteeing it runs its own fusermount -u on shutdown.
+        exec rclone mount ${RCLONE_REMOTE_NAME:-private-s3}: /mnt/media \
           --config=/config/rclone.conf \
           --vfs-cache-mode=full \
           --vfs-cache-max-size=${RCLONE_VFS_CACHE_MAX_SIZE:-80G} \
@@ -52,8 +71,7 @@ services:
           --allow-other \
           --uid=${PUID:-1000} \
           --gid=${PGID:-1000} \
-          --cache-dir=/cache \
-          --allow-non-empty
+          --cache-dir=/cache
     healthcheck:
       test: ["CMD-SHELL", "mountpoint -q /mnt/media || exit 1"]
       interval: 15s
